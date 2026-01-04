@@ -1,0 +1,17 @@
+{
+  "name": "blockchain",
+  "version": "1.0.0",
+  "description": "blockchain from scratch",
+  "license": "MIT",
+  "author": "wagnerkenhiti",
+  "type": "commonjs",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

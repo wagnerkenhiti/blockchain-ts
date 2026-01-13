@@ -12,10 +12,18 @@ export class Wallet{
             publicKeyEncoding: {type: 'spki', format: 'pem'},
             privateKeyEncoding: {type: 'pkcs8', format: 'pem'}
         });
-
-        this.publicKey = publicKey;
-        this.#privateKey = privateKey;
+        const pukey=publicKey.split('\n')[1]
+        this.publicKey = pukey.substring(0,pukey.length-1);
+        this.#privateKey = privateKey.split('\n')[1];
         this.amountMoney = walletMoney;
+    }
+
+    public getPublicKey():string{
+        return this.publicKey;
+    }
+
+    public getPrivateKey():string{
+        return this.#privateKey;
     }
 
     public money(): number{
@@ -30,7 +38,9 @@ export class Blockchain{
     #chain: Block[] = [];
     #mempool: Transaction[] = [];
     #dificulty: number;
+    #sequence: number;
     constructor(difficulty: number){
+        this.#sequence=0;
         this.#dificulty = difficulty;
         const blockGenesis: Block = {
             header: {
@@ -51,16 +61,6 @@ export class Blockchain{
         return createHash("sha256").update(data).digest("hex");
     }
 
-    #calculateHash(block:Block){
-        const data = [
-            block.header.previousBlock,
-            block.header.merkleRoot,
-            block.header.date,
-            block.header.nonce
-        ].join("|")
-        return this.#generateSHA256(data);
-    }
-
     #merkleRoot(transactions: Transaction[]): string{
         const hashTransactions = transactions.map(tx => tx.id).join("|");
         return this.#generateSHA256(hashTransactions);
@@ -68,7 +68,14 @@ export class Blockchain{
 
     #lastBlockHash(): string{
         const quantityBlock = this.#chain.length;
-        return this.#calculateHash(this.#chain[quantityBlock-1]);
+        const lastBlock = this.#chain[quantityBlock-1];
+        const data = [
+            lastBlock.header.previousBlock,
+            lastBlock.header.merkleRoot,
+            lastBlock.header.date,
+            lastBlock.header.nonce
+        ].join("|")
+        return this.#generateSHA256(data);
     }
 
     public returnBlockchain(): Block[]{
@@ -79,12 +86,58 @@ export class Blockchain{
         return this.#mempool;
     } 
 
-    public mineBlock(transactions: Transaction[], miner: string): void{
-         
+    public setDifficulty(newDifficulty: number): void {
+        this.#dificulty = newDifficulty;
     }
 
-    public createTransactions(){
+    public mineBlock(transactions: Transaction[], miner: string): void{
+        
+        const merkleRoot=this.#merkleRoot(transactions);
+        let date=Date.now();
+        let nonce:number=0;
 
+        const notvalide = (hash: string): boolean => {
+            let stringcmp: string = "0".repeat(this.#dificulty);
+            return hash.startsWith(stringcmp);
+        }
+
+        let stringHash: string;
+        do{
+            const string2digest: string = `${merkleRoot}|${date}|${this.#lastBlockHash()}|${miner}|${nonce}`;
+            stringHash=this.#generateSHA256(string2digest);
+            nonce=nonce+1;
+        } while(notvalide(stringHash));
+
+        const block: Block = {
+            header: {
+                version: "0",
+                merkleRoot: merkleRoot,
+                nonce: nonce-1,
+                previousBlock: this.#lastBlockHash(),
+                date: date,
+                difficulty: this.#dificulty,
+                miner: miner
+                },
+            payload: transactions
+         }
+
+         this.#chain.push(block)
+    }
+
+    public createTransactions(from: string, to: string,amount:number,sequence:number,signature: string): Transaction{
+        const date:number=Date.now();
+
+        const transaction:Transaction={
+            from: from,
+            to: to,
+            amount: amount,
+            date: date,
+            sequence: sequence,
+            id: this.#generateSHA256(`${from}|${to}|${date}|${sequence}`),
+            signature: signature
+        };
+
+        return transaction;
     }
 
 }

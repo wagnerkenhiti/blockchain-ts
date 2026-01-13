@@ -2,9 +2,9 @@ export interface Transaction{
     from: string;
     to: string;
     amount: number;
-    timestamp: number;
+    date: number;
     sequence: number;
-    id: string; //hash -> from + to + amount + timestamp + sequence
+    id: string; //hash -> from + to + amount + date + sequence
     signature: string;
 }
 

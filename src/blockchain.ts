@@ -6,12 +6,13 @@ export class Wallet{
     publicKey: string;
     amountMoney: number;
     #privateKey: string;
-
+    #sequence: number;
     constructor(walletMoney: number){
         const { publicKey, privateKey } = generateKeyPairSync('ed25519', {
             publicKeyEncoding: {type: 'spki', format: 'pem'},
             privateKeyEncoding: {type: 'pkcs8', format: 'pem'}
         });
+        this.#sequence=0;
         const pukey=publicKey.split('\n')[1]
         this.publicKey = pukey.substring(0,pukey.length-1);
         this.#privateKey = privateKey.split('\n')[1];
@@ -24,6 +25,14 @@ export class Wallet{
 
     public getPrivateKey():string{
         return this.#privateKey;
+    }
+
+    public getSequence():number{
+        return this.#sequence;
+    }
+
+    public addSequence():void{
+        this.#sequence++;
     }
 
     public money(): number{
@@ -86,6 +95,8 @@ export class Blockchain{
         return this.#mempool;
     } 
 
+
+    
     public setDifficulty(newDifficulty: number): void {
         this.#dificulty = newDifficulty;
     }
@@ -96,8 +107,8 @@ export class Blockchain{
         let date=Date.now();
         let nonce:number=0;
 
-        const notvalide = (hash: string): boolean => {
-            let stringcmp: string = "0".repeat(this.#dificulty);
+        const valide = (hash: string): boolean => {
+            const stringcmp: string = "0".repeat(this.#dificulty);
             return hash.startsWith(stringcmp);
         }
 
@@ -106,7 +117,7 @@ export class Blockchain{
             const string2digest: string = `${merkleRoot}|${date}|${this.#lastBlockHash()}|${miner}|${nonce}`;
             stringHash=this.#generateSHA256(string2digest);
             nonce=nonce+1;
-        } while(notvalide(stringHash));
+        } while(!valide(stringHash));
 
         const block: Block = {
             header: {
@@ -124,20 +135,22 @@ export class Blockchain{
          this.#chain.push(block)
     }
 
-    public createTransactions(from: string, to: string,amount:number,sequence:number,signature: string): Transaction{
+    public createTransactions(from: Wallet, to: string,amount:number): void{
         const date:number=Date.now();
-
+        const sequence:number=from.getSequence();
         const transaction:Transaction={
-            from: from,
+            from: from.getPublicKey(),
             to: to,
             amount: amount,
             date: date,
             sequence: sequence,
             id: this.#generateSHA256(`${from}|${to}|${date}|${sequence}`),
-            signature: signature
+            signature: from.getPrivateKey()
         };
 
-        return transaction;
+        from.addSequence();
+
+        this.#mempool.push(transaction);
     }
 
 }
